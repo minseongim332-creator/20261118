@@ -1,3 +1,6 @@
+# Deploy with Python 3.11 or 3.12; entrypoint: app.py
 streamlit>=1.41,<2
 Pillow>=10.4,<13
+# Online UI translation for 48 languages; Korean and English are built in.
+# No API key or paid API configuration is included.
 deep-translator>=1.11.4,<2
