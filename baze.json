@@ -1,1 +1,1 @@
-{"preview":{"command":["npm","run","dev"]}}
+{"preview":{"command":["npm","run","dev"]},"data":{"tables":["family_groups","family_members","family_messages","family_invites"]},"secrets":["BAZE_API_KEY"]}

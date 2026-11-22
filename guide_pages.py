@@ -6,6 +6,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from guide_lessons import FLOWS
 from guide_ui import w
+from guide_authentic import device_choice, save_device, screenshot
 
 S = st.session_state
 DEMO_CODE = '246810'
@@ -59,10 +60,11 @@ def topic(key,go):
     if key=='copy': st.caption(w('copy_def'))
     if key=='verify': st.caption(w('verify_safe'))
     if key in ('wifi','font'):
-        device=S.get('guide_device_value','Galaxy')
+        device=S.get('guide_device_value','Unknown')
         paths={'wifi':{'Galaxy':w('settings')+' › '+w('wifi'),'iPhone':w('settings')+' › Wi-Fi'},'font':{'Galaxy':w('settings')+' › '+w('font'),'iPhone':w('settings')+' › '+w('font')}}
-        st.caption(device+': '+paths[key][device])
+        if device in paths[key]:st.caption(device+': '+paths[key][device])
     st.progress((i+1)/len(flow),text=f'{w("step")} {i+1} / {len(flow)}')
+    if key!='safe':screenshot(S.get('guide_device_value','Unknown'),key,i)
     text=instruction(flow[i])
     st.markdown(f'<section class="guide-step"><span aria-hidden="true">{flow[i][2]}</span><h2>{escape(text)}</h2></section>',unsafe_allow_html=True)
     voice(text)
@@ -116,7 +118,6 @@ def sim(go):
         else:st.write(text)
         voice(text)
     with st.container(key='guide_phone'):
-        st.markdown('<div class="guide-phone-status"><span>9:41</span><span aria-hidden="true">▮▮▮ &nbsp;◓ &nbsp;▰</span></div>',unsafe_allow_html=True)
         if not key:
             st.subheader(w('sim'))
             st.caption(w('free_hint'))
@@ -166,7 +167,10 @@ def prefs(go):
     size=st.radio(w('font'),['normal','large','xl'],index=['normal','large','xl'].index(current),format_func=w,horizontal=True)
     if size!=current:
         S.guide_font=size;st.query_params['size']=size;st.rerun()
-    S.guide_device_value=st.selectbox(w('device'),['Galaxy','iPhone'],index=int(S.get('guide_device_value')=='iPhone'),key='guide_device')
+    devices=['Galaxy','iPhone','Unknown']
+    selected=S.get('guide_device_value','Unknown')
+    device=st.selectbox(w('device'),devices,index=devices.index(selected) if selected in devices else 2,format_func=device_choice,key='guide_device')
+    if device!=selected:save_device(device)
     S.guide_voice_value=st.toggle(w('voice'),value=S.get('guide_voice_value',True),key='guide_voice')
     speeds=[.75,.9,1.0]
     speed=S.get('guide_speed_value',.9)
