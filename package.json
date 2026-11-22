@@ -3,10 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 5173 --strictPort"
   },
-  "dependencies": {"@supabase/supabase-js": "^2.108.0", "papaparse": "^5.5.3"},
-  "devDependencies": {"vite": "^7.3.0"}
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.0",
+    "hono": "^4.13.20",
+    "papaparse": "^5.5.3"
+  },
+  "devDependencies": {
+    "vite": "^7.3.0",
+    "wrangler": "^4.166.0"
+  }
 }

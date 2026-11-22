@@ -1,6 +1,7 @@
 import Papa from 'papaparse';
 import setupSql from '../supabase/schema.sql?raw';
 import {t,tr,h,box,note,field,progress,local,legacy,flows,date} from './shared.js';
+import {courseBackup,mergeCourseBackup} from './curriculum.js';
 
 const max=15*1024*1024;
 const fields=['schema','kind','id','payload'];
@@ -18,7 +19,7 @@ export function toBackup(){
  messages.forEach(m=>add('message',m.id,m));
  Object.entries(progress.legacyCompleted).forEach(([k,v])=>add('complete',k,{date:v}));
  Object.entries(progress.legacySteps).forEach(([k,v])=>add('step',k,{step:v}));
- add('preferences','local',{favorites:progress.legacyFavorites,quiz_scores:progress.legacyQuiz,guide:{steps:progress.steps,completed:progress.completed,favorites:progress.favorites,practiced:progress.practiced,recent:progress.recent}});
+ add('preferences','local',{favorites:progress.legacyFavorites,quiz_scores:progress.legacyQuiz,guide:{steps:progress.steps,completed:progress.completed,favorites:progress.favorites,practiced:progress.practiced,recent:progress.recent,courses:courseBackup()}});
  return new Blob(['\ufeff'+Papa.unparse([fields,...rows])],{type:'text/csv;charset=utf-8'});
 }
 async function importBackup(file){
@@ -26,7 +27,7 @@ async function importBackup(file){
  const parsed=Papa.parse(await file.text(),{header:true,skipEmptyLines:true,delimiter:','});
  if(parsed.errors.length||JSON.stringify(parsed.meta.fields)!==JSON.stringify(fields)||parsed.data.length>3000)throw Error('CSV');
  const newMessages=new Map(messages.map(m=>[m.id,m]));
- const next=structuredClone(progress);let match=0;
+ const next=structuredClone(progress),courseRecords=[];let match=0;
  for(const row of parsed.data){
   if(row.schema!=='appjalal-v1'||!validId(row.id))throw Error('schema');
   const o=JSON.parse(row.payload),k=row.id;if(!isObj(o))throw Error('row');
@@ -42,6 +43,7 @@ async function importBackup(file){
    for(const x of Array.isArray(o.favorites)?o.favorites:[])if(known(legacy,x)&&!next.legacyFavorites.includes(x))next.legacyFavorites.push(x);
    for(const [id,q] of Object.entries(isObj(o.quiz_scores)?o.quiz_scores:{}))if(known(legacy,id)&&isObj(q)&&Number.isInteger(q.attempts)&&q.attempts>=0&&typeof q.correct==='boolean')next.legacyQuiz[id]={attempts:q.attempts,correct:q.correct};
    const g=isObj(o.guide)?o.guide:{};
+   if(isObj(g.courses))courseRecords.push(g.courses);
    for(const [id,i] of Object.entries(isObj(g.steps)?g.steps:{}))if(acceptable(flows,id,i))next.steps[id]=Math.max(next.steps[id]||0,i);
    for(const [id,d] of Object.entries(isObj(g.completed)?g.completed:{}))if(known(flows,id)&&hasDate(d))next.completed[id]=d;
    for(const list of ['favorites','practiced'])for(const id of Array.isArray(g[list])?g[list]:[])if(known(flows,id)&&!next[list].includes(id))next[list].push(id);
@@ -50,7 +52,7 @@ async function importBackup(file){
   }else if(!['step','complete'].includes(row.kind))throw Error('kind');
  }
  if(!match||newMessages.size>2900||new Blob([...newMessages.values()].map(x=>JSON.stringify(x))).size>max)throw Error('no data');
- Object.assign(progress,next);local();messages=[...newMessages.values()];
+ Object.assign(progress,next);local();courseRecords.forEach(mergeCourseBackup);messages=[...newMessages.values()];
 }
 export async function picture(file){
  if(!file||file.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))throw Error('image');

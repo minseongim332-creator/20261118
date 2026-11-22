@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||'playwright');
+const url=process.env.PREVIEW_URL||'http://localhost:5173';
+const browser=await chromium.launch({args:['--no-sandbox']});
+try{
+ const p=await browser.newPage({viewport:{width:360,height:800}});
+ p.setDefaultTimeout(7000);
+ const errors=[];p.on('pageerror',err=>errors.push(err.message));
+ const cmd=k=>p.locator(`[data-course="${k}"]`).click();
+ const start=p.locator('.entry-start');
+ await p.goto(url);
+ for(const locale of ['en','vi','ja','zh-CN','th','tl','mn','ko']){
+  await p.locator('[name=lang]').selectOption(locale);
+  assert.ok((await start.innerText()).trim());
+  assert.equal(await p.locator('html').getAttribute('lang'),locale==='tl'?'fil':locale);
+ }
+ await start.click();await p.locator('.entry-setup summary').click();
+ assert.equal(await p.locator('.entry-identify dd:visible').count(),2);
+ await p.locator('[data-action="device:Galaxy"]').click();
+ await p.locator('.course-summary').waitFor();
+ await p.goto(url);await start.waitFor();assert.equal(await start.getAttribute('href'),'#home');
+ const artwork=p.locator('[data-official-source-only] a').first();
+ const loaded=()=>artwork.waitFor();
+ await p.goto(`${url}/#learn/signup`);await cmd('concept');await cmd('observe');await loaded();
+ assert.match(await artwork.getAttribute('href'),/^https:\/\/images.samsung.com\//);
+ await p.screenshot({path:'/tmp/opencode/pon-galaxy-visual.png',fullPage:true});
+ await cmd('show:1');await p.locator('.official-screen-empty').waitFor();
+ await p.setViewportSize({width:1160,height:860});
+ await p.goto(`${url}/#settings`);await p.locator('[name=device]').selectOption('iPhone');
+ await p.goto(`${url}/#course/signup`);await loaded();
+ assert.match(await artwork.getAttribute('href'),/^https:\/\/cdsassets.apple.com\//);
+ await p.screenshot({path:'/tmp/opencode/pon-iphone-visual.png',fullPage:true});
+ await p.goto(`${url}/#course/verify`);await cmd('concept');await cmd('observe');await cmd('guided');await cmd('launch');await cmd('request');await cmd('open-inbox');
+ const old=await p.locator('.course-phone .course-sample').innerText();
+ await cmd('return');await cmd('resend');await cmd('open-inbox');
+ const current=await p.locator('.course-phone .course-sample').innerText();assert.notEqual(old,current);
+ await cmd('return');const submit=p.locator('#course-form button[type=submit]');
+ await submit.click();assert.match(await p.locator('#course-status').innerText(),/비었어요/);
+ await p.locator('#course-code').fill(old);await submit.click();assert.match(await p.locator('#course-status').innerText(),/만료/);
+ await p.locator('#course-code').fill('000000');await submit.click();assert.match(await p.locator('#course-status').innerText(),/일치하지 않아요/);
+ await p.locator('#course-code').fill('');await p.locator('.sim-keys summary').click();
+ for(const digit of current)await cmd(`key:${digit}`);
+ await submit.click();await p.locator('.course-rail li:nth-child(5)[aria-current]').waitFor();
+ const syntheticRequests=[];
+ p.on('request',r=>{if(new URL(r.url()).pathname.startsWith('/lesson-screens/'))syntheticRequests.push(r.url());});
+ await p.goto(`${url}/#course/login`);await cmd('concept');await cmd('observe');
+ await loaded();assert.match(await artwork.getAttribute('href'),/setup-apple-account/);
+ assert.equal(await p.locator('[data-official-image]').count(),0);
+ await cmd('guided');await cmd('launch');await p.locator('#answer-0').waitFor();
+ assert.deepEqual(syntheticRequests,[]);
+ assert.deepEqual(errors,[]);
+ console.log('Entry in 8 languages, onboarding restoration, official links for both devices, missing references, SMS resend/keypad, and practice independent from mock images passed.');
+}finally{await browser.close();}

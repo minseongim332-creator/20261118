@@ -14,6 +14,7 @@ import streamlit as st
 # No online translator is imported.
 from courseware import EXTRA,CATEGORIES
 import features
+import photo_ai
 import design
 import services
 import guide_cloud
@@ -126,7 +127,8 @@ LOGO_IMAGE = _APP_ASSETS['logo.png']
 CHARACTER_IMAGE = _APP_ASSETS['character.png']
 
 def fresh():
-    return {'schema':'appjalal-v1', 'page':'home','lang':st.query_params.get('lang','ko'),'messages':[],
+    device=st.query_params.get('device','Unknown')
+    return {'schema':'appjalal-v1', 'page':'welcome','guide_device_value':device if device in ('iPhone','Galaxy','Unknown') else 'Unknown','lang':st.query_params.get('lang','ko'),'messages':[],
             'completed':{},'steps':{},'lesson':'install','big':False,'assets':{'guide':_APP_ASSETS['human_guide.png']},'favorites':[],'quiz_scores':{},'profile_name':''}
 for key, value in fresh().items():
     if key not in st.session_state:
@@ -432,7 +434,13 @@ try:
 except Exception:
     st.warning(t('sync_failed'))
 
-if S.page in ('home','welcome'):
+if S.page=='welcome':
+    from guide_authentic import opening
+    opening(go)
+elif S.page=='device_setup':
+    from guide_authentic import setup
+    setup(go, guide_ui.w)
+elif S.page=='home':
     from guide_pages import start
     guide_ui.home(go, lambda key:start(key,go))
 elif S.page in ('topic','sim','catalog','prefs','favorites','resume','safe','fix','family','help'):
@@ -522,7 +530,8 @@ elif S.page=='learn':
         S.completed[lesson]=datetime.now(timezone.utc).isoformat();S.just_completed=True;go('record')
     if st.button(t('reset'),use_container_width=True):S.steps[lesson]=0;st.rerun()
 elif S.page=='photo':
-    nav();st.title(t('photo'));st.write(t('photo_help'));st.info(t('photo_no_ai'))
+    nav();st.title(t('photo'))
+    photo_ai.render();st.divider();st.subheader('가족에게 사진 보내기');st.write(t('photo_help'));st.info(t('photo_no_ai'))
     composer(True);st.info(t('csv_note'));backup()
 elif S.page=='chat':
     nav();st.title(t('chat'));st.info(t('csv_note'))

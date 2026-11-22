@@ -1,2 +1,2 @@
 import { defineConfig } from 'vite';
-export default defineConfig({ server: { allowedHosts: true }, preview: { allowedHosts: true } });
+export default defineConfig({ server: { allowedHosts: true, proxy: { '/api': 'http://localhost:8787' } }, preview: { allowedHosts: true } });

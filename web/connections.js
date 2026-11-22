@@ -1,13 +1,15 @@
 import {t,tr,h,box,goBtn,note,field,prefs,progress,local,flows,legacy,date,names} from './shared.js';
 import {mountBackup,picture} from './backup.js';
+import {space,stopSpace} from './family-space.js';
+import {b} from './brand.js';
 
-let clientPromise,recovery=false,activeRoom='',timer;
+let clientPromise,recovery=false,activeRoom='',timer,familyEnabled=false;
 const visible=selector=>document.querySelector(selector);
 const ok=(result)=>{if(result.error)throw result.error;return result.data;};
 const err=()=>tr('연결하지 못했어요. 입력을 확인하고 다시 시도해 주세요.','Could not complete this action. Check your information and retry.');
 const label=(ko,en)=>h(tr(ko,en));
 const action=(id,name,css='')=>`<button type="button" id="${id}" class="${css}">${h(name)}</button>`;
-const heading=page=>t(page==='backup'?'legacy':page);
+const heading=page=>page==='family'?b('family'):page==='notifications'?b('notice'):t(page==='backup'?'legacy':page==='chat'||page==='legacy-family'?'family':page);
 const roomKey=v=>typeof v==='string'&&/^[0-9a-f-]{36}$/i.test(v);
 const plain=val=>val&&typeof val==='object'&&!Array.isArray(val);
 const sameOrigin=()=>new URL('/',location.origin).href;
@@ -20,10 +22,12 @@ function publicKey(key){
 async function client(){
  if(!clientPromise)clientPromise=(async()=>{
   const rsp=await fetch('/guide-config.json',{cache:'no-store'});if(!rsp.ok)throw Error('config');
-  const config=await rsp.json();if(!config.supabaseUrl&&!config.supabasePublishableKey)return null;
+   const config=await rsp.json();if(config.previewOnly===true&&!import.meta.env.DEV)return null;
+   if(!config.supabaseUrl&&!config.supabasePublishableKey)return null;
   const url=new URL(config.supabaseUrl);if(url.protocol!=='https:'||url.username||url.password||!publicKey(config.supabasePublishableKey))throw Error('config');
   const {createClient}=await import('@supabase/supabase-js');
-  const db=createClient(url.origin,config.supabasePublishableKey,{auth:{flowType:'pkce',persistSession:true,detectSessionInUrl:true}});
+   const db=createClient(url.origin,config.supabasePublishableKey,{auth:{flowType:'pkce',persistSession:true,detectSessionInUrl:true}});
+   familyEnabled=config.ponjalalFamilyEnabled===true;
   db.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY'){recovery=true;setTimeout(()=>{if((location.hash.slice(1)||'home')==='profile')window.dispatchEvent(new Event('guide:recover'));else location.hash='profile';},0);}});
   return db;
  })().catch(e=>{clientPromise=null;throw e});
@@ -129,16 +133,24 @@ async function family(node,page,db,session,go){
  if(thread.isConnected)timer=setInterval(()=>{if(thread.isConnected)refresh();else{clearInterval(timer);timer=undefined;}},12000);
 }
 
+export function unmount(){clearInterval(timer);timer=undefined;stopSpace();}
 export async function mount(node,page,go){
- clearInterval(timer);timer=undefined;
+ unmount();
  if(!node?.isConnected)return;
  if(page==='backup'){mountBackup(node);return;}
  try{
   const db=await client();if(!node.isConnected)return;
-  if(!db){node.innerHTML=box(heading(page),`${note(t('not_ready'))}${goBtn('backup',h(t('legacy')))}`);return;}
+  const personal=`<div class="row">${goBtn('settings',h(t('settings')))}${goBtn('resume',h(t('resume')))}${goBtn('favorites',h(t('favorites')))}${goBtn('backup',h(t('legacy')))}</div>`;
+  if(!db||(!familyEnabled&&['family','help','chat','notifications'].includes(page))){node.innerHTML=box(page==='profile'?b('me'):heading(page),`${page==='profile'?personal:''}${note(t('not_ready'))}<div class="row">${goBtn('catalog',h(b('help')))}${db?goBtn('legacy-family',label('기존 가족 채팅','Original family chats')):''}${page!=='profile'?goBtn('backup',h(t('legacy'))):''}</div>`);return;}
+  if(['family','help','chat','notifications'].includes(page)){await space(node,page,db);return;}
   const {session}=ok(await db.auth.getSession());if(!node.isConnected)return;
-  if(page==='profile'){await profile(node,db,session,go);return;}
+  if(page==='profile'){
+   if(session?.user.is_anonymous){node.innerHTML=box(b('me'),`${personal}${note(tr('이 기기로 가족에 연결했어요. 브라우저 데이터를 지우면 다시 초대가 필요할 수 있어요.','This device can join family. Clearing browser data may require a new invite.'))}${goBtn('family',h(b('family')))}`);return;}
+   await profile(node,db,session,go);
+   if(node.isConnected)node.querySelector('h1')?.insertAdjacentHTML('afterend',personal+goBtn('legacy-family',label('기존 가족 채팅', 'Original family chats')));
+   return;
+  }
   if(!session){node.innerHTML=box(heading(page),`${note(tr('가족과 연결하려면 내 계정으로 들어가 주세요.','Sign in to connect to family.'))}${goBtn('profile',h(t('profile')),'primary')}`);return;}
-  await family(node,page,db,session,go);
+  await family(node,'legacy-family',db,session,go);
  }catch{if(node.isConnected){node.innerHTML=box(heading(page),`${note(err(),'warn')}${action('try-again',tr('다시 열기','Try again'))}${goBtn('backup',h(t('legacy')))}`);node.querySelector('#try-again').onclick=()=>mount(node,page,go);}}
 }
