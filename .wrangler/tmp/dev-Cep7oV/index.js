@@ -1943,7 +1943,7 @@ app.post("/api/family", async (c) => {
 });
 app.post("/api/join", async (c) => {
   const b = await c.req.json().catch(() => ({}));
-  const cd = clean(b.code, 12).toUpperCase(), nick = clean(b.nickname, 20);
+  const cd = String(b.code ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 12).toUpperCase(), nick = clean(b.nickname, 20);
   if (!cd || !nick) return err(c, 400, "missing");
   const inv = await c.env.DB.prepare("SELECT * FROM family_invites WHERE invite_code=?").bind(cd).first();
   if (!inv) return err(c, 404, "not_found");
@@ -2014,7 +2014,7 @@ app.get("/api/family/:id/messages/:mid/image", async (c) => {
   return new Response(bin, { headers: { "content-type": head.slice(5, head.indexOf(";")), "cache-control": "private, max-age=86400" } });
 });
 var AI_SYSTEM = `\uB108\uB294 \uD3F0\uC798\uC54C\uC758 \uC2A4\uB9C8\uD2B8\uD3F0 \uC0AC\uC6A9 \uB3C4\uC6B0\uBBF8\uB2E4. \uC0AC\uC6A9\uC790\uB294 \uC2A4\uB9C8\uD2B8\uD3F0\uC774 \uC775\uC219\uD558\uC9C0 \uC54A\uC740 \uC911\uC7A5\uB144\uCE35\uC774\uB2E4.
-\uC0AC\uC9C4\uC744 \uBA3C\uC800 \uC790\uC138\uD788 \uBCF4\uACE0 \uC9C8\uBB38\uC5D0 \uB2F5\uD55C\uB2E4. \uB2F5\uC740 \uB2E4\uC74C \uC21C\uC11C\uC758 \uC9E7\uC740 \uBB38\uB2E8\uC73C\uB85C \uC4F4\uB2E4: \uC0AC\uC9C4\uC5D0\uC11C \uD655\uC778\uD55C \uB0B4\uC6A9, \uC9C0\uAE08 \uD654\uBA74\uC758 \uC0C1\uD669, \uC9C0\uAE08 \uD574\uC57C \uD560 \uD589\uB3D9, \uB20C\uB7EC\uC57C \uD560 \uBC84\uD2BC\uC774\uB098 \uBA54\uB274\uC758 \uC704\uCE58, \uB2E4\uC74C \uB2E8\uACC4, \uC8FC\uC758\uD560 \uC810.
+\uC0AC\uC9C4\uC774 \uC788\uC73C\uBA74 \uBA3C\uC800 \uC790\uC138\uD788 \uBCF4\uACE0 \uC9C8\uBB38\uC5D0 \uB2F5\uD55C\uB2E4. \uC0AC\uC9C4\uC774 \uC5C6\uC73C\uBA74 \uC0AC\uC9C4\uC744 \uC694\uAD6C\uD558\uC9C0 \uB9D0\uACE0, \uC9C8\uBB38\uACFC \uB300\uAD04\uD638 \uC548\uC758 \uC218\uC5C5\xB7\uB2E8\uACC4 \uC815\uBCF4\uB9CC\uC73C\uB85C \uC26C\uC6B4 \uB9D0\uB85C \uBC14\uB85C \uB2F5\uD55C\uB2E4. \uC815\uBCF4\uAC00 \uBAA8\uC790\uB77C\uBA74 \uB418\uBB3B\uB294 \uC9C8\uBB38\uC744 \uD558\uB098\uB9CC \uD558\uACE0, \uB9C8\uC9C0\uB9C9\uC5D0 \uC0AC\uC9C4\uC744 \uC62C\uB9AC\uBA74 \uB354 \uC815\uD655\uD558\uB2E4\uACE0 \uD55C \uC904\uB9CC \uB367\uBD99\uC778\uB2E4. \uB2F5\uC740 \uB2E4\uC74C \uC21C\uC11C\uC758 \uC9E7\uC740 \uBB38\uB2E8\uC73C\uB85C \uC4F4\uB2E4: \uC0AC\uC9C4\uC5D0\uC11C \uD655\uC778\uD55C \uB0B4\uC6A9, \uC9C0\uAE08 \uD654\uBA74\uC758 \uC0C1\uD669, \uC9C0\uAE08 \uD574\uC57C \uD560 \uD589\uB3D9, \uB20C\uB7EC\uC57C \uD560 \uBC84\uD2BC\uC774\uB098 \uBA54\uB274\uC758 \uC704\uCE58, \uB2E4\uC74C \uB2E8\uACC4, \uC8FC\uC758\uD560 \uC810.
 \uADDC\uCE59: \uC5B4\uB824\uC6B4 \uC804\uBB38 \uC6A9\uC5B4\uB97C \uC4F0\uC9C0 \uC54A\uB294\uB2E4. \uD55C \uBC88\uC5D0 \uD558\uB098\uC758 \uD589\uB3D9\uB9CC \uC124\uBA85\uD55C\uB2E4. \uC0AC\uC9C4\uC5D0 \uC5C6\uB294 \uBC84\uD2BC\uC774\uB098 \uBA54\uB274\uB97C \uC9C0\uC5B4\uB0B4\uC9C0 \uC54A\uB294\uB2E4. \uBCF4\uC774\uC9C0 \uC54A\uB294 \uC815\uBCF4\uB294 \uCD94\uCE21\uD558\uC9C0 \uC54A\uB294\uB2E4.
 \uC0AC\uC9C4\uC774 \uD750\uB9AC\uAC70\uB098 \uC798\uB838\uAC70\uB098 \uC2A4\uB9C8\uD2B8\uD3F0 \uD654\uBA74\uC774 \uC544\uB2C8\uBA74 \uADF8\uB807\uAC8C \uB9D0\uD558\uACE0 \uB2E4\uC2DC \uCC0D\uB3C4\uB85D \uC548\uB0B4\uD55C\uB2E4. \uC5B4\uB9B0\uC544\uC774\uCC98\uB7FC \uB300\uD558\uC9C0 \uC54A\uACE0 \uCC28\uBD84\uD55C \uD55C\uAD6D\uC5B4\uB85C \uB9D0\uD55C\uB2E4.
 \uBE44\uBC00\uBC88\uD638, \uC778\uC99D\uBC88\uD638, \uC8FC\uBBFC\uB4F1\uB85D\uBC88\uD638, \uACC4\uC88C\xB7\uCE74\uB4DC \uC815\uBCF4\uAC00 \uBCF4\uC774\uBA74 \uC77D\uC9C0 \uB9D0\uACE0 \uAC00\uB824\uC11C \uB2E4\uC2DC \uC62C\uB9AC\uB77C\uACE0 \uC548\uB0B4\uD55C\uB2E4. \uAE08\uC735 \uAC70\uB798\uB098 \uC778\uC99D\uC744 \uB300\uC2E0 \uD574 \uC8FC\uC9C0 \uC54A\uB294\uB2E4.
@@ -2027,16 +2027,16 @@ app.post("/api/ask-photo", async (c) => {
   let imgs = 0;
   for (const m of msgs) {
     if (m.role === "assistant" && typeof m.content === "string") clean_msgs.push({ role: "assistant", content: m.content.slice(0, 4e3) });
-    else if (m.role === "user" && typeof m.content === "string") clean_msgs.push({ role: "user", content: m.content.slice(0, 300) });
+    else if (m.role === "user" && typeof m.content === "string") clean_msgs.push({ role: "user", content: m.content.slice(0, 460) });
     else if (m.role === "user" && Array.isArray(m.content)) {
       const t = m.content.find((x) => x.type === "text"), im = m.content.find((x) => x.type === "image_url");
       const url = im?.image_url?.url;
       if (!url || !/^data:image\/(jpeg|png|webp);base64,/.test(url) || url.length > 25e5) return err(c, 413, "too_big");
       imgs++;
-      clean_msgs.push({ role: "user", content: [{ type: "text", text: String(t?.text ?? "").slice(0, 300) }, { type: "image_url", image_url: { url } }] });
+      clean_msgs.push({ role: "user", content: [{ type: "text", text: String(t?.text ?? "").slice(0, 460) }, { type: "image_url", image_url: { url } }] });
     }
   }
-  if (!clean_msgs.length || clean_msgs[clean_msgs.length - 1].role !== "user" || imgs !== 1) return err(c, 400, "bad_request");
+  if (!clean_msgs.length || clean_msgs[clean_msgs.length - 1].role !== "user" || imgs > 1) return err(c, 400, "bad_request");
   try {
     const r = await fetch(`${c.env.BAZE_API_BASE}/chat/completions`, {
       method: "POST",
