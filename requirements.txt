@@ -1,6 +1,1 @@
-# Appjalal: deploy app.py with this dependency list.
 streamlit>=1.41,<2
-Pillow>=10.4,<13
-supabase>=2.10,<3
-requests>=2.32,<3
-openai>=1.50,<3

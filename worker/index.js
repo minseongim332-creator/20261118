@@ -38,7 +38,7 @@ app.post('/api/family', async c => {
 
 app.post('/api/join', async c => {
   const b = await c.req.json().catch(() => ({}));
-  const cd = clean(b.code, 12).toUpperCase(), nick = clean(b.nickname, 20);
+  const cd = String(b.code ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toUpperCase(), nick = clean(b.nickname, 20);
   if (!cd || !nick) return err(c, 400, 'missing');
   const inv = await c.env.DB.prepare('SELECT * FROM family_invites WHERE invite_code=?').bind(cd).first();
   if (!inv) return err(c, 404, 'not_found');
@@ -117,7 +117,7 @@ app.get('/api/family/:id/messages/:mid/image', async c => {
 });
 
 const AI_SYSTEM = `너는 폰잘알의 스마트폰 사용 도우미다. 사용자는 스마트폰이 익숙하지 않은 중장년층이다.
-사진을 먼저 자세히 보고 질문에 답한다. 답은 다음 순서의 짧은 문단으로 쓴다: 사진에서 확인한 내용, 지금 화면의 상황, 지금 해야 할 행동, 눌러야 할 버튼이나 메뉴의 위치, 다음 단계, 주의할 점.
+사진이 있으면 먼저 자세히 보고 질문에 답한다. 사진이 없으면 사진을 요구하지 말고, 질문과 대괄호 안의 수업·단계 정보만으로 쉬운 말로 바로 답한다. 정보가 모자라면 되묻는 질문을 하나만 하고, 마지막에 사진을 올리면 더 정확하다고 한 줄만 덧붙인다. 답은 다음 순서의 짧은 문단으로 쓴다: 사진에서 확인한 내용, 지금 화면의 상황, 지금 해야 할 행동, 눌러야 할 버튼이나 메뉴의 위치, 다음 단계, 주의할 점.
 규칙: 어려운 전문 용어를 쓰지 않는다. 한 번에 하나의 행동만 설명한다. 사진에 없는 버튼이나 메뉴를 지어내지 않는다. 보이지 않는 정보는 추측하지 않는다.
 사진이 흐리거나 잘렸거나 스마트폰 화면이 아니면 그렇게 말하고 다시 찍도록 안내한다. 어린아이처럼 대하지 않고 차분한 한국어로 말한다.
 비밀번호, 인증번호, 주민등록번호, 계좌·카드 정보가 보이면 읽지 말고 가려서 다시 올리라고 안내한다. 금융 거래나 인증을 대신 해 주지 않는다.
@@ -131,16 +131,16 @@ app.post('/api/ask-photo', async c => {
   let imgs = 0;
   for (const m of msgs) {
     if (m.role === 'assistant' && typeof m.content === 'string') clean_msgs.push({ role: 'assistant', content: m.content.slice(0, 4000) });
-    else if (m.role === 'user' && typeof m.content === 'string') clean_msgs.push({ role: 'user', content: m.content.slice(0, 300) });
+    else if (m.role === 'user' && typeof m.content === 'string') clean_msgs.push({ role: 'user', content: m.content.slice(0, 460) });
     else if (m.role === 'user' && Array.isArray(m.content)) {
       const t = m.content.find(x => x.type === 'text'), im = m.content.find(x => x.type === 'image_url');
       const url = im?.image_url?.url;
       if (!url || !/^data:image\/(jpeg|png|webp);base64,/.test(url) || url.length > 2_500_000) return err(c, 413, 'too_big');
       imgs++;
-      clean_msgs.push({ role: 'user', content: [{ type: 'text', text: String(t?.text ?? '').slice(0, 300) }, { type: 'image_url', image_url: { url } }] });
+      clean_msgs.push({ role: 'user', content: [{ type: 'text', text: String(t?.text ?? '').slice(0, 460) }, { type: 'image_url', image_url: { url } }] });
     }
   }
-  if (!clean_msgs.length || clean_msgs[clean_msgs.length - 1].role !== 'user' || imgs !== 1) return err(c, 400, 'bad_request');
+  if (!clean_msgs.length || clean_msgs[clean_msgs.length - 1].role !== 'user' || imgs > 1) return err(c, 400, 'bad_request');
   try {
     const r = await fetch(`${c.env.BAZE_API_BASE}/chat/completions`, {
       method: 'POST',
