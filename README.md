@@ -6,8 +6,6 @@
 - 두 판은 `official-lesson-assets.json`을 공유합니다. 제조사 원본을 확인했어도 앱 안에서 표시할 권한이 확인되지 않으면 원본 링크만 제공합니다. 자료가 없는 단계에서는 모의 이미지로 대체하지 않습니다. 아래의 모의 이미지 설명은 이전 판의 기록입니다.
 - 웹판 실습은 25개이며, 실습 완료는 원본 스크린샷 확보 여부와 별도로 기록합니다. `REQUIREMENT_TRACEABILITY.md`에 구현·검증·미완료를 구분했고, `node scripts/report_lesson_assets.mjs`로 기종·단계별 원본 공백을 확인할 수 있습니다.
 
-## BAZE 웹판
-
 Node.js 22.12 이상에서 `npm ci`, `npm run dev`로 미리보고, `npm run build`로 게시 파일을 만듭니다. 게시에는 `dist/`만 사용하며 Streamlit 실행 파일은 아래 방식으로 계속 사용할 수 있습니다.
 
 ### 기종별 실습 과정
